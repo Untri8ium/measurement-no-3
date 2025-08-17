@@ -151,7 +151,7 @@
     <div id="controls" class="card">
       <div id="ts">Time elapsed: <span id="tVal" class="time">0.00</span> s</div>
       <div>•</div>
-      <div id="dt" title="Click to change frame interval">Δt = <span id="dtVal">0.01</span> s</div>
+      <div id="dt" title="Click to change frame interval">Δt = <span id="dtVal">0.010</span> s</div>
       <div class="btnbar">
         <button id="btnStart" title="Go to start (0s)">⏮</button>
         <button id="btnBack50" title="50 frames earlier">↞ 50</button>
@@ -173,6 +173,7 @@
     const $$ = (sel, root=document) => Array.from(root.querySelectorAll(sel));
     const sleep = (ms) => new Promise(r=>setTimeout(r, ms));
     const f4 = (n) => (Math.round(n*10000)/10000).toFixed(4);
+    const f3 = (n) => (Math.round(n*1000)/1000).toFixed(3);
     const f2 = (n) => (Math.round(n*100)/100).toFixed(2);
     const centerOf = (el) => { const r=el.getBoundingClientRect(); return {x:r.left+r.width/2, y:r.top+r.height/2}; };
     function spawnToken(text, fromEl, toEl, opts={}) {
@@ -291,7 +292,7 @@
       // 3) Multiply updated vx by Δt near Distance x
       const meet={ x: (centerOf(vxValEl).x*0.5 + centerOf(xValEl).x*0.5), y: (centerOf(vxValEl).y*0.2 + centerOf(xValEl).y*0.8) };
       const toMeetA=spawnToken(f4(next.vx), vxValEl, meet, {duration:time(600)});
-      const toMeetB=spawnToken(f2(dtUse), $('#dtVal'), meet, {duration:time(600)});
+      const toMeetB=spawnToken(f3(dtUse), $('#dtVal'), meet, {duration:time(600)});
       const delayedFlash = async () => { await sleep(time(900)); flashOp('×', meet); };
       await Promise.all([toMeetA,toMeetB, delayedFlash()]);
 
@@ -317,7 +318,7 @@
       $('#btnBack50').addEventListener('click', ()=>{ pause(); stepBackward(50); });
       $('#btnStart').addEventListener('click', ()=>{ pause(); idx=0; updateReadouts(); redrawGraphs(); });
       $('#btnSpeed').addEventListener('click', ()=>{ speedIdx=(speedIdx+1)%5; updateSpeedLabel(); });
-      $('#dt').addEventListener('click', ()=>{ const cur=+$('#dtVal').textContent; const v=prompt('Enter Δt in seconds (0.001 – 0.25):', cur); if(v==null) return; const num=+v; if(Number.isFinite(num)&&num>=0.001&&num<=0.25){ dt=+num.toFixed(3); $('#dtVal').textContent=f2(dt); } else alert('Please enter a number between 0.001 and 0.25 seconds.'); });
+      $('#dt').addEventListener('click', ()=>{ const cur=+$('#dtVal').textContent; const v=prompt('Enter Δt in seconds (0.001 – 0.250):', cur); if(v==null) return; const num=+v; if(Number.isFinite(num)&&num>=0.001&&num<=0.250){ dt=+num.toFixed(3); $('#dtVal').textContent=f3(dt); } else alert('Please enter a number between 0.001 and 0.250 seconds.'); });
       document.addEventListener('keydown', async (e)=>{ if(e.code==='Space'){ e.preventDefault(); if(playing) pause(); else playLoop(); } else if(e.code==='ArrowRight'){ e.preventDefault(); pause(); await stepForward(true); } else if(e.code==='ArrowLeft'){ e.preventDefault(); pause(); stepBackward(1); } });
     }
 
