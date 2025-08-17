@@ -1,0 +1,329 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>The Measurement No. 3</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;800&display=swap" rel="stylesheet">
+  <style>
+    :root{ --bg:#0b0e13; --panel:#121722; --ink:#e9eef8; --ink-dim:#b8c3d6; --accent:#7aa2f7; --muted:#2a3242; --good:#8bd17c; --math:#cfe1ff; }
+    *{box-sizing:border-box}
+    body{ margin:0; font-family:"Inter", system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial; background:#0b0e13; color:var(--ink); }
+    #app{max-width:1200px; margin:0 auto; padding:28px 20px 40px;}
+    h1{margin:0 0 12px; font-weight:800; letter-spacing:0.02em; font-size:26px; text-align:left}
+    .card{background:linear-gradient(180deg, rgba(255,255,255,0.04), rgba(255,255,255,0.02)); border:1px solid #1d2431; border-radius:16px; padding:16px;}
+    #formulaWrap{position:relative; overflow:visible; text-align: center}
+    #formulaTitle{font-weight:800; letter-spacing:0.03em; font-size:14px; color:var(--ink-dim); text-transform:uppercase; margin:0 0 10px; text-align:left}
+    .foot{font-size:12px; color:var(--ink-dim); text-align:center; margin-top:20px; padding:10px 0; border-top:1px solid #1b2331; opacity:0.8}
+
+    #nums{display:flex; gap:16px; align-items:stretch; margin:16px 0}
+    .num{flex:1; padding:14px 16px; border-radius:16px; border:1px solid #1b2331; background:linear-gradient(180deg, rgba(255,255,255,0.03), rgba(255,255,255,0.015)); display:flex; align-items:center; justify-content:space-between}
+    .num .label{font-weight:700; color:var(--ink-dim); font-size:14px}
+    .num .value{font-variant-numeric:tabular-nums; font-size:36px; font-weight:800; letter-spacing:0.02em}
+    .num .units{font-size:12px; color:var(--ink-dim)}
+    .num .right{display:flex; flex-direction:column; align-items:flex-end; gap:2px}
+
+    .time {font-size: 2em}
+
+    #graphs{display:grid; grid-template-columns:1fr 1fr; gap:16px; margin-top:10px}
+    .graph{padding:12px; border-radius:16px; border:1px solid #1b2331; background:linear-gradient(180deg, rgba(255,255,255,0.02), rgba(255,255,255,0.01));}
+    .graph h3{margin:2px 2px 10px; font-size:14px; color:var(--ink-dim); font-weight:700; text-align:left}
+    .graph .canvasWrap{position:relative}
+    canvas{width:100%; height:260px; display:block; background:transparent}
+
+    #controls{margin-top:16px; padding:12px; display:flex; align-items:center; gap:12px; flex-wrap:wrap; justify-content:flex-start}
+    #ts{font-variant-numeric:tabular-nums; font-weight:700}
+    #dt{cursor:pointer; color:var(--accent); text-decoration:underline;}
+    .btnbar{display:flex; align-items:center; gap:8px}
+    button{cursor:pointer; border:none; background:var(--muted); color:var(--ink); padding:10px 12px; border-radius:10px; font-weight:700; letter-spacing:0.01em; box-shadow:inset 0 -2px 0 rgba(0,0,0,0.25); transition:transform 120ms ease, background 120ms ease}
+    button:hover{transform:translateY(-1px)}
+    button:active{transform:translateY(0); box-shadow:none}
+    .pill{padding:8px 10px; font-size:12px; background:transparent; border:1px solid #2a3447}
+
+    /* Floating tokens for animation */
+    .token{position:fixed; z-index:5; font-weight:800; font-size:18px; color:#fff; padding:3px 6px; border-radius:8px; background:rgba(122,162,247,0.12); border:1px solid rgba(122,162,247,0.35); backdrop-filter: blur(2px); transform:translate(-50%,-50%); transition: transform var(--t,420ms) cubic-bezier(.17,.67,.25,1), opacity 220ms ease; white-space:nowrap}
+    .token.small{font-size:14px; padding:2px 5px}
+    .op{position:fixed; z-index:6; font-weight:900; font-size:3em; color:rgba(107, 169, 255, 0.94); text-shadow:0 0 0.5em rgb(189, 222, 255); opacity:0; transform:translate(-50%,-50%); transition:opacity 420ms ease}
+    /* SVG math styling */
+    .math{ color:var(--math); font-weight:700; font-size:28px; line-height:1.2; }
+    .math .vsub{ position:relative; }
+    .math .vsub .sub{ position:absolute; left:100%; top:0.6em; font-size:0.7em; }
+    .frac{ display:inline-block; vertical-align:middle; }
+    .frac .num{ display:block; padding:0 6px 4px 6px; text-align:center; }
+    .frac .bar{ display:block; width:100%; height:3px; background:var(--math); opacity:.85; }
+    .frac .den{ display:block; padding:4px 6px 0 6px; text-align:center; }
+    .paren{ display:inline-block; }
+    .sqrt{ display:inline-block; position:relative; padding-left:.35em; }
+    .sqrt:before { content: '√'; position: absolute; left: -0.3em; top: 0.02em; font-size: 1.2em; line-height: 1;}
+    .over{ display:inline-block; border-top:2px solid var(--math); padding-top:2px; }
+    .sup{ vertical-align:super; font-size:.7em; }
+    .sub{ vertical-align:sub; font-size:.7em; }
+    .dot{ padding:0 .15em; }
+  </style>
+</head>
+<body>
+  <div id="app">
+    <h1>The Measurement No. 3</h1>
+
+    <!-- TOP: SVG Formula -->
+    <div id="formulaWrap" class="card">
+      <div id="formulaTitle">The Great Equation</div>
+      <div id="formulaHTML" class="math" aria-label="formula">
+        <span id="lhs_dv_html"><strong>Δ</strong>v<span class="sub">x</span></span>
+        <span class="dot">=</span>
+        <span class="frac" id="frac_root">
+          <span class="num">
+            <span id="dt_tok">Δt</span>
+            <span class="dot">(</span>
+            <span id="g_tok">g</span>
+            <span class="dot">+</span>
+            <span>
+              <span>d</span><sup class="sup">2</sup>
+              <span class="dot">·</span>
+              <span class="vsub" id="vx_pow"><span>v</span><span class="sub">x</span><sup class="sup">2</sup></span>
+              <span class="dot">/</span>
+              <span>
+                <span class="dot">(</span>
+                <span>x</span><sup class="sup">2</sup>
+                <span class="dot">+</span>
+                <span>2</span><span class="dot">·</span><span>d</span><span class="dot">·</span><span>x</span>
+                <span class="dot">)</span><sup class="sup">3/2</sup>
+              </span>
+            </span>
+            <span class="dot">)</span>
+          </span>
+          <span class="bar"></span>
+          <span class="den">
+            <span class="paren">(
+              <span id="x_tok1">x</span><span class="dot">+</span><span>d</span>
+            )</span>
+            <span class="dot">/</span>
+            <span class="sqrt"><span class="over"> <span id="x2_tok1">x</span><sup class="sup">2</sup><span class="dot">+</span><span>2</span><span class="dot">·</span><span>d</span><span class="dot">·</span><span id="x_tok2">x</span> </span></span>
+            <span class="dot">+</span>
+            <span>2</span><span class="dot">·</span>
+            <span class="paren">( <span>M</span><span class="dot">/</span><span>m</span> )</span>
+            <span class="dot">·</span>
+            <span class="sqrt"><span class="over"> <span id="x2_tok2">x</span><sup class="sup">2</sup><span class="dot">+</span><span>2</span><span class="dot">·</span><span>d</span><span class="dot">·</span><span id="x_tok3">x</span> </span></span>
+            <span class="dot">/</span>
+            <span class="paren">( <span id="x_tok4">x</span><span class="dot">+</span><span>d</span> )</span>
+          </span>
+        </span>
+      </div>
+    </div>
+
+    <!-- Numbers -->
+    <div id="nums">
+      <div class="num" id="vxPanel">
+        <div>
+          <div class="label">Velocity vₓ</div>
+        </div>
+        <div class="right">
+          <div class="value" id="vxVal">0.000</div>
+          <div class="units">m·s<sup>-1</sup></div>
+        </div>
+      </div>
+      <div class="num" id="xPanel">
+        <div>
+          <div class="label">Distance x</div>
+        </div>
+        <div class="right">
+          <div class="value" id="xVal">0.000</div>
+          <div class="units">m</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Graphs -->
+    <div id="graphs">
+      <div class="graph card" id="gVel">
+        <h3>Velocity vₓ vs time t</h3>
+        <div class="canvasWrap"><canvas id="cvVel" width="600" height="260"></canvas></div>
+      </div>
+      <div class="graph card" id="gDist">
+        <h3>Distance x vs time t</h3>
+        <div class="canvasWrap"><canvas id="cvDist" width="600" height="260"></canvas></div>
+      </div>
+    </div>
+
+    <!-- Controls -->
+    <div id="controls" class="card">
+      <div id="ts">Time elapsed: <span id="tVal" class="time">0.00</span> s</div>
+      <div>•</div>
+      <div id="dt" title="Click to change frame interval">Δt = <span id="dtVal">0.01</span> s</div>
+      <div class="btnbar">
+        <button id="btnStart" title="Go to start (0s)">⏮</button>
+        <button id="btnBack50" title="50 frames earlier">↞ 50</button>
+        <button id="btnPrev" title="Previous frame">◀</button>
+        <button id="btnPlay" title="Play / Pause (space)">⏵</button>
+        <button id="btnNext" title="Next frame">▶</button>
+        <button id="btnFwd50" title="50 frames later">50 ↠</button>
+        <button id="btnSpeed" class="pill" title="Playback speed">Speed: <span id="spdLabel">1×</span></button>
+      </div>
+    </div>
+  <footer>
+    <div class="foot">CC BY 4.0 - Sasuke Kondo (Element138)</div>
+  </footer>
+  </div>
+
+  <script>
+    // ---------- Helpers ----------
+    const $ = (sel, root=document) => root.querySelector(sel);
+    const $$ = (sel, root=document) => Array.from(root.querySelectorAll(sel));
+    const sleep = (ms) => new Promise(r=>setTimeout(r, ms));
+    const f4 = (n) => (Math.round(n*10000)/10000).toFixed(4);
+    const f2 = (n) => (Math.round(n*100)/100).toFixed(2);
+    const centerOf = (el) => { const r=el.getBoundingClientRect(); return {x:r.left+r.width/2, y:r.top+r.height/2}; };
+    function spawnToken(text, fromEl, toEl, opts={}) {
+        const { duration=420, delay=500, small=false } = opts;
+        const t = document.createElement('div');
+        t.className = 'token' + (small ? ' small' : '');
+        t.textContent = text;
+
+        // custom props
+        t.style.setProperty('--t', duration + 'ms');
+        t.style.transition = `transform ${duration}ms ease, opacity 300ms ease`; // add opacity transition
+        t.style.opacity = '1';
+
+        document.body.appendChild(t);
+
+        const from = (fromEl && fromEl.x !== undefined) ? fromEl : centerOf(fromEl);
+        const to   = (toEl && toEl.x !== undefined) ? toEl   : centerOf(toEl);
+        to.x -= 30;
+        to.y -= 10;
+
+        t.style.left = from.x + 'px';
+        t.style.top  = from.y + 'px';
+
+        // trigger movement
+        void t.offsetWidth;
+        setTimeout(() => {
+            t.style.transform = `translate(${to.x - from.x}px, ${to.y - from.y}px)`;
+        }, delay);
+
+        return new Promise(res => {
+            // schedule fade start a little before removal
+            setTimeout(() => {
+            t.style.opacity = '0';
+            }, delay + duration);
+
+            setTimeout(() => {
+            t.remove();
+            res();
+            }, delay + duration + 300);
+        });
+    }
+
+    function flashOp(sym, near){ const p= (near.x!==undefined? near: centerOf(near)); const s=document.createElement('div'); s.className='op'; s.textContent=sym; s.style.left=p.x+'px'; s.style.top=p.y+'px'; document.body.appendChild(s); requestAnimationFrame(()=>{ s.style.opacity=1; }); setTimeout(()=>{ s.style.opacity=0; setTimeout(()=>s.remove(), 420); }, 500); }
+
+    // ---------- Simulation ----------
+    const params = { d:0.45, M:1.0, m:0.05, g:9.8 };
+    let dt = 0.01; const tMax = 1.5;
+    const history = [{ t:0, vx:0, x:0 }]; let idx=0; let playing=false; const speeds=[1,2,4,0.25,0.5]; let speedIdx=0;
+
+    // Canvases
+    const cvVel=$('#cvVel'), ctxVel=cvVel.getContext('2d');
+    const cvDist=$('#cvDist'), ctxDist=cvDist.getContext('2d');
+
+    function drawAxes(ctx, yMax, xMax, labelY, labelX){
+      const W=ctx.canvas.width, H=ctx.canvas.height, padL=46, padB=34, padT=14, padR=12;
+      ctx.clearRect(0,0,W,H); ctx.strokeStyle='#304056'; ctx.lineWidth=1; ctx.beginPath(); ctx.moveTo(padL,padT); ctx.lineTo(padL,H-padB); ctx.lineTo(W-padR,H-padB); ctx.stroke();
+      ctx.font = `${12*(window.devicePixelRatio||1)}px Inter`; ctx.textAlign='right'; ctx.textBaseline='middle';
+      for(let i=0;i<=5;i++){ const y=H-padB-(H-padB-padT)*(i/5); ctx.strokeStyle='rgba(255,255,255,0.06)'; ctx.beginPath(); ctx.moveTo(padL,y); ctx.lineTo(W-padR,y); ctx.stroke(); const tick=(yMax*i/5).toFixed((yMax>5)?0:2); ctx.fillStyle='#6f85a6'; ctx.fillText(tick,padL-6,y);}    
+      ctx.textAlign='center'; ctx.textBaseline='top';
+      for(let i=0;i<=6;i++){ const x=padL+(W-padL-padR)*(i/6); ctx.strokeStyle='rgba(255,255,255,0.06)'; ctx.beginPath(); ctx.moveTo(x,H-padB); ctx.lineTo(x,padT); ctx.stroke(); const tick=(xMax*i/6).toFixed(2); ctx.fillStyle='#6f85a6'; ctx.fillText(tick,x,H-padB+6);}    
+      ctx.save(); ctx.fillStyle='#9eb1cd'; ctx.font=`${12*(window.devicePixelRatio||1)}px Inter`; ctx.textAlign='center'; ctx.textBaseline='top'; ctx.fillText(`${labelX}`,(padL+(W-padR))/2,H-22); ctx.translate(16,(padT+(H-padB))/2); ctx.rotate(-Math.PI/2); ctx.fillText(`${labelY}`,0,0); ctx.restore();
+      return {padL,padR,padT,padB,W,H};
+    }
+    function plotPoints(ctx, pts, yMax, xMax, color='#cfe1ff'){
+      const labelY = (ctx === ctxVel) ? 'vₓ / m·s⁻¹' : 'x / cm';
+      const {padL,padR,padT,padB,W,H} = drawAxes(ctx, yMax, xMax, labelY, 't / s');
+      ctx.save(); ctx.strokeStyle=color; ctx.lineWidth=2; ctx.lineJoin='round'; ctx.lineCap='round'; ctx.beginPath();
+      pts.forEach((p,i)=>{ const x=padL+(W-padL-padR)*(p.t/xMax); const yVal=Math.max(0,Math.min(yMax,p.y)); const y=H-padB-(H-padB-padT)*(yVal/yMax); if(i===0) ctx.moveTo(x,y); else ctx.lineTo(x,y); }); ctx.stroke();
+      ctx.fillStyle=color; pts.forEach(p=>{ const x=padL+(W-padL-padR)*(p.t/xMax); const yVal=Math.max(0,Math.min(yMax,p.y)); const y=H-padB-(H-padB-padT)*(yVal/yMax); ctx.beginPath(); ctx.arc(x,y,3,0,Math.PI*2); ctx.fill(); }); ctx.restore();
+    }
+    function redrawGraphs(){ const vPts=history.slice(0,idx+1).map(s=>({t:s.t,y:s.vx})); const xPts=history.slice(0,idx+1).map(s=>({t:s.t,y:s.x*100})); plotPoints(ctxVel,vPts,0.7,1.5); plotPoints(ctxDist,xPts,70,1.5); }
+
+    // Physics (Δv_x step)
+    function computeDv(x, vx, dtUse){ const {d,M,m,g}=params; const S=x*x + 2*d*x; const sqrtS=(x > 0 ? Math.sqrt(S) : 0.01); const denom=( (x+d)/sqrtS ) + 2*(M/m)*( sqrtS/(x+d) ); const numer=g + (d*d*vx*vx)/(sqrtS**(3)); return dtUse * numer / denom; }
+
+    function stepForward(useAnim=true, customDt=null){ const last=history[idx]; const dtUse=(customDt==null? dt: customDt); const tNext=+(last.t+dtUse).toFixed(6); if(tNext>tMax+1e-9) return {done:true}; const dv=computeDv(last.x,last.vx,dtUse); const vxNew=last.vx+dv; const dx=vxNew*dtUse; const xNew=last.x+dx; history.splice(idx+1); history.push({t:tNext,vx:vxNew,x:xNew}); idx++; if(useAnim){ return animateFrame(last, {t:tNext,vx:vxNew,x:xNew}, dv, dtUse); } else { updateReadouts(); redrawGraphs(); return {done:false}; } }
+    function stepBackward(n=1){ idx=Math.max(0, idx-n); updateReadouts(); redrawGraphs(); }
+    function updateReadouts(){ const s=history[idx]; $('#vxVal').textContent=f4(s.vx); $('#xVal').textContent=f4(s.x); $('#tVal').textContent=f2(s.t); }
+
+    // Anchor helpers for SVG targets
+    function ptOf(el){ const r=el.getBoundingClientRect(); return {x:r.left+r.width/2, y:r.top+r.height/2}; }
+    function rhsTargets(){
+      return {
+        vx: [ document.querySelector('#vx_pow > span:first-child') ],
+        x: [ document.getElementById('x_tok1'), document.getElementById('x_tok2'), document.getElementById('x_tok3'), document.getElementById('x_tok4'), document.getElementById('x2_tok1'), document.getElementById('x2_tok2') ],
+        g: [ document.getElementById('g_tok') ],
+        d: [], M: [], m: [], dt: [ document.getElementById('dt_tok') ],
+        dv_lhs: document.getElementById('lhs_dv_html')
+      };
+    }
+
+    // Frame choreography
+    async function animateFrame(prev,next,dv,dtUse){
+      const speed=[0.8,1.6,3.2,0.2,0.4][speedIdx]; const time=(ms)=>Math.max(120, Math.round(ms/speed));
+      const vxValEl=$('#vxVal'); const xValEl=$('#xVal');
+      const tgs = rhsTargets();
+      
+      // 4?) Prepare graph points
+      const vPts=history.slice(0,idx+1).map(s=>({t:s.t,y:s.vx})); const xPts=history.slice(0,idx+1).map(s=>({t:s.t,y:s.x*100}));
+
+      // 1) Feed current numbers to formula RHS occurrences
+      const jobs=[]; tgs.vx.forEach((el,i)=> el && jobs.push(spawnToken(f4(prev.vx), vxValEl, ptOf(el), {duration:time(600), small:true})));
+      tgs.x.forEach((el,i)=> el && jobs.push(spawnToken(f4(prev.x), xValEl, ptOf(el), {duration:time(600), small:true})));
+      await Promise.all(jobs); await sleep(time(160));
+
+      // 2) Δvₓ value originates from exact LHS position
+      const dvSource = ptOf(tgs.dv_lhs);
+      const dvToken = document.createElement('div'); dvToken.className='token'; dvToken.textContent='Δvₓ'; dvToken.style.left=dvSource.x+'px'; dvToken.style.top=dvSource.y+'px'; await sleep(time(240)); dvToken.textContent=f4(dv);
+      const delayedFlashDv = async () => { await sleep(time(900)); flashOp('+', vxValEl); }
+
+      await Promise.all([spawnToken(dvToken.textContent, dvSource, vxValEl, {duration:time(840)}), delayedFlashDv()]); $('#vxVal').textContent=f4(next.vx); dvToken.remove(); await sleep(time(1000));
+
+      // 4??) Graph points
+      plotPoints(ctxVel,vPts,1.0,1.5);
+
+      // 3) Multiply updated vx by Δt near Distance x
+      const meet={ x: (centerOf(vxValEl).x*0.5 + centerOf(xValEl).x*0.5), y: (centerOf(vxValEl).y*0.2 + centerOf(xValEl).y*0.8) };
+      const toMeetA=spawnToken(f4(next.vx), vxValEl, meet, {duration:time(600)});
+      const toMeetB=spawnToken(f2(dtUse), $('#dtVal'), meet, {duration:time(600)});
+      const delayedFlash = async () => { await sleep(time(900)); flashOp('×', meet); };
+      await Promise.all([toMeetA,toMeetB, delayedFlash()]);
+
+      const delayedFlashV = async () => { await sleep(time(900)); flashOp('+', xValEl); }
+      const prod = next.vx * dtUse; await Promise.all([spawnToken(f4(prod), meet, xValEl, {duration:time(680)}), delayedFlashV()]); await sleep(time(0)); $('#xVal').textContent=f4(next.x);
+
+      // 4) Graph points
+      plotPoints(ctxDist,xPts,70,1.5);
+      $('#tVal').textContent=f2(next.t); await sleep(time(1000));
+      return {done:false};
+    }
+
+    // Controls
+    function updateSpeedLabel(){ $('#spdLabel').textContent = `${[1,2,4,0.25,0.5][speedIdx]}×`; }
+    async function playLoop(){ if(playing) return; playing=true; $('#btnPlay').textContent='⏸'; try{ while(playing){ const last=history[idx]; const rem=tMax-last.t; let dtUse=Math.min(dt,+rem.toFixed(6)); if(rem<=1e-9){ playing=false; break; } const {done}=await stepForward(true,dtUse); if(done){ playing=false; break; } } } finally { $('#btnPlay').textContent='⏵'; } }
+    function pause(){ playing=false; $('#btnPlay').textContent='⏵'; }
+
+    function wireUI(){
+      $('#btnPlay').addEventListener('click', ()=>{ if(playing) pause(); else playLoop(); });
+      $('#btnNext').addEventListener('click', async ()=>{ await stepForward(true); });
+      $('#btnPrev').addEventListener('click', ()=>{ pause(); stepBackward(1); });
+      $('#btnFwd50').addEventListener('click', ()=>{ pause(); for(let i=0;i<50;i++){ const last=history[idx]; if(last.t+dt>tMax+1e-9) break; stepForward(false); } });
+      $('#btnBack50').addEventListener('click', ()=>{ pause(); stepBackward(50); });
+      $('#btnStart').addEventListener('click', ()=>{ pause(); idx=0; updateReadouts(); redrawGraphs(); });
+      $('#btnSpeed').addEventListener('click', ()=>{ speedIdx=(speedIdx+1)%5; updateSpeedLabel(); });
+      $('#dt').addEventListener('click', ()=>{ const cur=+$('#dtVal').textContent; const v=prompt('Enter Δt in seconds (0.001 – 0.25):', cur); if(v==null) return; const num=+v; if(Number.isFinite(num)&&num>=0.001&&num<=0.25){ dt=+num.toFixed(3); $('#dtVal').textContent=f2(dt); } else alert('Please enter a number between 0.001 and 0.25 seconds.'); });
+      document.addEventListener('keydown', async (e)=>{ if(e.code==='Space'){ e.preventDefault(); if(playing) pause(); else playLoop(); } else if(e.code==='ArrowRight'){ e.preventDefault(); pause(); await stepForward(true); } else if(e.code==='ArrowLeft'){ e.preventDefault(); pause(); stepBackward(1); } });
+    }
+
+    // Boot
+    function boot(){ updateSpeedLabel(); updateReadouts(); redrawGraphs(); wireUI(); }
+    window.addEventListener('load', boot);
+  </script>
+</body>
+</html>
