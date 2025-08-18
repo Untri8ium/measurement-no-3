@@ -86,9 +86,9 @@
               <span class="dot">/</span>
               <span>
                 <span class="dot">(</span>
-                <span>x</span><sup class="sup">2</sup>
+                <span id="x2_tok3">x</span><sup class="sup">2</sup>
                 <span class="dot">+</span>
-                <span>2</span><span class="dot">·</span><span>d</span><span class="dot">·</span><span>x</span>
+                <span>2</span><span class="dot">·</span><span>d</span><span class="dot">·</span><span id="x_tok5">x</span>
                 <span class="dot">)</span><sup class="sup">3/2</sup>
               </span>
             </span>
@@ -160,6 +160,7 @@
         <button id="btnNext" title="Next frame">▶</button>
         <button id="btnFwd50" title="50 frames later">50 ↠</button>
         <button id="btnSpeed" class="pill" title="Playback speed">Speed: <span id="spdLabel">1×</span></button>
+        <label id="labelCheckbox"><input type="checkbox" id="friction"> Kinetic Friction</label>
       </div>
     </div>
   <footer>
@@ -174,7 +175,7 @@
     const sleep = (ms) => new Promise(r=>setTimeout(r, ms));
     const f4 = (n) => (Math.round(n*10000)/10000).toFixed(4);
     const f3 = (n) => (Math.round(n*1000)/1000).toFixed(3);
-    const f2 = (n) => (Math.round(n*100)/100).toFixed(2);
+    // const f2 = (n) => (Math.round(n*100)/100).toFixed(2);
     const centerOf = (el) => { const r=el.getBoundingClientRect(); return {x:r.left+r.width/2, y:r.top+r.height/2}; };
     function spawnToken(text, fromEl, toEl, opts={}) {
         const { duration=420, delay=500, small=false } = opts;
@@ -216,6 +217,9 @@
         });
     }
 
+    const checkbox = document.querySelector('input[id="friction"]');
+    const labelCheckbox = document.querySelector('label[id="labelCheckbox"]');
+
     function flashOp(sym, near){ const p= (near.x!==undefined? near: centerOf(near)); const s=document.createElement('div'); s.className='op'; s.textContent=sym; s.style.left=p.x+'px'; s.style.top=p.y+'px'; document.body.appendChild(s); requestAnimationFrame(()=>{ s.style.opacity=1; }); setTimeout(()=>{ s.style.opacity=0; setTimeout(()=>s.remove(), 420); }, 500); }
 
     // ---------- Simulation ----------
@@ -249,16 +253,20 @@
     // Physics (Δv_x step)
     function computeDv(x, vx, dtUse){ const {d,M,m,g}=params; const S=x*x + 2*d*x; const sqrtS=(x > 0 ? Math.sqrt(S) : 0.01); const denom=( (x+d)/sqrtS ) + 2*(M/m)*( sqrtS/(x+d) ); const numer=g + (d*d*vx*vx)/(sqrtS**(3)); return dtUse * numer / denom; }
 
-    function stepForward(useAnim=true, customDt=null){ const last=history[idx]; const dtUse=(customDt==null? dt: customDt); const tNext=+(last.t+dtUse).toFixed(6); if(tNext>tMax+1e-9) return {done:true}; const dv=computeDv(last.x,last.vx,dtUse); const vxNew=last.vx+dv; const dx=vxNew*dtUse; const xNew=last.x+dx; history.splice(idx+1); history.push({t:tNext,vx:vxNew,x:xNew}); idx++; if(useAnim){ return animateFrame(last, {t:tNext,vx:vxNew,x:xNew}, dv, dtUse); } else { updateReadouts(); redrawGraphs(); return {done:false}; } }
+    function stepForward(useAnim=true, customDt=null){ const last=history[idx]; const dtUse=(customDt==null? dt: customDt); const tNext=+(last.t+dtUse).toFixed(6); if(tNext>tMax+1e-9) return {done:true};
+    const dvWithoutFric = computeDv(last.x,last.vx,dtUse);
+    const fric = last.vx > 0 ? 0.1695 * dtUse : Math.min(dvWithoutFric, 0.0 * dtUse)
+    const dv = checkbox.checked ? dvWithoutFric - fric : dvWithoutFric;
+    vxNew=last.vx+dv; const dx=vxNew*dtUse; const xNew=last.x+dx; history.splice(idx+1); history.push({t:tNext,vx:vxNew,x:xNew}); idx++; if(useAnim){ return animateFrame(last, {t:tNext,vx:vxNew,x:xNew}, dv, dtUse); } else { updateReadouts(); redrawGraphs(); return {done:false}; } }
     function stepBackward(n=1){ idx=Math.max(0, idx-n); updateReadouts(); redrawGraphs(); }
-    function updateReadouts(){ const s=history[idx]; $('#vxVal').textContent=f4(s.vx); $('#xVal').textContent=f4(s.x); $('#tVal').textContent=f2(s.t); }
+    function updateReadouts(){ const s=history[idx]; $('#vxVal').textContent=f4(s.vx); $('#xVal').textContent=f4(s.x); $('#tVal').textContent=f3(s.t); }
 
     // Anchor helpers for SVG targets
     function ptOf(el){ const r=el.getBoundingClientRect(); return {x:r.left+r.width/2, y:r.top+r.height/2}; }
     function rhsTargets(){
       return {
         vx: [ document.querySelector('#vx_pow > span:first-child') ],
-        x: [ document.getElementById('x_tok1'), document.getElementById('x_tok2'), document.getElementById('x_tok3'), document.getElementById('x_tok4'), document.getElementById('x2_tok1'), document.getElementById('x2_tok2') ],
+        x: [ document.getElementById('x_tok1'), document.getElementById('x_tok2'), document.getElementById('x_tok3'), document.getElementById('x_tok4'), document.getElementById('x_tok5'), document.getElementById('x2_tok1'), document.getElementById('x2_tok2'), document.getElementById('x2_tok3') ],
         g: [ document.getElementById('g_tok') ],
         d: [], M: [], m: [], dt: [ document.getElementById('dt_tok') ],
         dv_lhs: document.getElementById('lhs_dv_html')
@@ -270,6 +278,9 @@
       const speed=[0.8,1.6,3.2,0.2,0.4][speedIdx]; const time=(ms)=>Math.max(120, Math.round(ms/speed));
       const vxValEl=$('#vxVal'); const xValEl=$('#xVal');
       const tgs = rhsTargets();
+
+      const dvWithoutFric = computeDv(prev.x,prev.vx,dtUse);
+      const fric = prev.vx > 0 ? 0.1695 * dtUse : Math.min(dvWithoutFric, 0.0 * dtUse)
       
       // 4?) Prepare graph points
       const vPts=history.slice(0,idx+1).map(s=>({t:s.t,y:s.vx})); const xPts=history.slice(0,idx+1).map(s=>({t:s.t,y:s.x*100}));
@@ -277,17 +288,25 @@
       // 1) Feed current numbers to formula RHS occurrences
       const jobs=[]; tgs.vx.forEach((el,i)=> el && jobs.push(spawnToken(f4(prev.vx), vxValEl, ptOf(el), {duration:time(600), small:true})));
       tgs.x.forEach((el,i)=> el && jobs.push(spawnToken(f4(prev.x), xValEl, ptOf(el), {duration:time(600), small:true})));
+      tgs.dt.forEach((el,i)=> el && jobs.push(spawnToken(f3(dtUse), $('#dtVal'), ptOf(el), {duration:time(600), small:true})));
       await Promise.all(jobs); await sleep(time(160));
 
-      // 2) Δvₓ value originates from exact LHS position
+      // 1.1) Friction token from checkbox label to LHS
       const dvSource = ptOf(tgs.dv_lhs);
-      const dvToken = document.createElement('div'); dvToken.className='token'; dvToken.textContent='Δvₓ'; dvToken.style.left=dvSource.x+'px'; dvToken.style.top=dvSource.y+'px'; await sleep(time(240)); dvToken.textContent=f4(dv);
+      const dvTokenWithoutFric = document.createElement('div'); dvTokenWithoutFric.className='token'; dvTokenWithoutFric.textContent=f4(dvWithoutFric); dvTokenWithoutFric.style.left=dvSource.x+'px'; dvTokenWithoutFric.style.top=dvSource.y+'px'; await sleep(time(240));
+      if(checkbox.checked){
+        const delayedFlashFric = async () => { await sleep(time(900)); flashOp('+', dvSource); };
+        await Promise.all([spawnToken(f4(-(prev.vx > 0 ? 0.1695 * dtUse : Math.min(dvWithoutFric, 0.0 * dtUse))), labelCheckbox, tgs.dv_lhs, {duration: time(600)}), spawnToken(dvTokenWithoutFric.textContent, {x: dvSource.x + 5, y: dvSource.y + 5}, dvSource, {duration:time(840)}), delayedFlashFric()]);
+      }
+
+      // 2) Δvₓ value originates from exact LHS position
+      const dvToken = document.createElement('div'); dvToken.className='token'; dvToken.textContent=f4(dv); dvToken.style.left=dvSource.x+'px'; dvToken.style.top=dvSource.y+'px'; await sleep(time(240));
       const delayedFlashDv = async () => { await sleep(time(900)); flashOp('+', vxValEl); }
 
       await Promise.all([spawnToken(dvToken.textContent, dvSource, vxValEl, {duration:time(840)}), delayedFlashDv()]); $('#vxVal').textContent=f4(next.vx); dvToken.remove(); await sleep(time(1000));
 
       // 4??) Graph points
-      plotPoints(ctxVel,vPts,1.0,1.5);
+      plotPoints(ctxVel,vPts,0.7,1.5);
 
       // 3) Multiply updated vx by Δt near Distance x
       const meet={ x: (centerOf(vxValEl).x*0.5 + centerOf(xValEl).x*0.5), y: (centerOf(vxValEl).y*0.2 + centerOf(xValEl).y*0.8) };
@@ -301,7 +320,7 @@
 
       // 4) Graph points
       plotPoints(ctxDist,xPts,70,1.5);
-      $('#tVal').textContent=f2(next.t); await sleep(time(1000));
+      $('#tVal').textContent=f3(next.t); await sleep(time(1000));
       return {done:false};
     }
 
